@@ -20,14 +20,13 @@
               <button @click="openFileViewer(child)">
                 <font-awesome-icon icon="eye" /> View
               </button>
-              <button @click="confirmDelete(child)">
-                <font-awesome-icon icon="trash" /> Delete
-              </button>
+              <button @click="showFileDetails(child)">Details</button>
+              <button @click="confirmDelete(child)">Delete</button>
               <button @click="downloadFile(child)">
                 <font-awesome-icon icon="download" /> Download
               </button>
-              <button v-if="!isSVGFile(child)" @click="extractAndUploadSVG(child)">
-                <font-awesome-icon icon="upload" /> Extract & Upload SVG
+              <button @click="extractAndUploadSVG(child)">
+                <font-awesome-icon icon="upload" /> Extract
               </button>
             </td>
           </tr>
@@ -36,16 +35,23 @@
     </div>
 
     <!-- Modal for File Viewer -->
-    <div v-if="showFileViewer" class="modal pdf-viewer-modal">
+    <div v-if="showFileViewer" class="modal">
       <div class="modal-content">
         <span class="close" @click="closeFileViewer">&times;</span>
-        <iframe v-if="isPDF(selectedFile)" :src="selectedFileUrl" class="pdf-viewer"></iframe>
-        <img v-if="isSVG(selectedFile)" :src="selectedFileUrl" class="image-viewer" />
+        <div v-if="isPdf">
+          <iframe :src="selectedFileUrl" class="pdf-viewer"></iframe>
+        </div>
+        <div v-else-if="isSvg">
+          <object :data="selectedFileUrl" type="image/svg+xml" class="image-viewer"></object>
+        </div>
+        <div v-else>
+          <p>Unsupported file format: {{ selectedFileUrl }}</p>
+        </div>
       </div>
     </div>
 
     <!-- Modal for File Details -->
-    <div v-if="showDetailsModal" class="modal file-details-modal">
+    <div v-if="showDetailsModal" class="file-details-modal">
       <div class="modal-content">
         <span class="close" @click="closeFileDetails">&times;</span>
         <h3>File Details</h3>
@@ -261,129 +267,148 @@ export default {
 </script>
 
 <style>
-.table-responsive {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  max-width: 100%;
-  margin-bottom: 1rem;
-  background-color: transparent;
-  border-collapse: collapse;
-}
-
-.table th,
-.table td {
-  padding: 12px;
-  text-align: left;
-}
-
-.table th {
-  background-color: #e0e0e0;
-  color: #333;
-}
-
-.table tbody tr {
-  background-color: #f5f5f5;
-  color: #333;
-}
-
-.table th + th,
-.table td + td {
-  padding-left: 20px;
-}
-
-.table tbody tr:hover {
-  background-color: #e0e0e0;
-}
-
-@media (max-width: 768px) {
-  .table th,
-  .table td```css
-  {
-    font-size: 14px;
-    padding: 8px;
+  .table-responsive {
+    overflow-x: auto;
   }
-}
 
-.modal {
-  display: block;
-  position: fixed;
-  z-index: 1;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.7);
-}
+  .table {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+    background-color: transparent;
+    border-collapse: collapse;
+  }
 
-.modal-content {
-  background-color: #fefefe;
-  margin: auto;
-  padding: 20px;
-  border: 1px solid #888;
-  width: 80%; /* Adjust the width of the modal content */
-  max-width: 600px; /* Set a maximum width for the modal */
-  height: auto; /* Adjust height to fit content */
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  border-radius: 5px; /* Rounded corners for a cleaner look */
-}
+  .table th,
+  .table td {
+    padding: 12px;
+    text-align: left;
+  }
 
-.close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-}
+  .table th {
+    background-color: #e0e0e0;
+    color: #333;
+  }
 
-.close:hover,
-.close:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
-}
+  .table tbody tr {
+    background-color: #f5f5f5;
+    color: #333;
+  }
 
-.pdf-viewer {
-  width: 100%;
-  height: 90%;
-}
+  .table th + th,
+  .table td + td {
+    padding-left: 20px;
+  }
 
-.image-viewer {
-  width: 100%;
-  height: 400px; /* Adjust the height of the SVG viewer */
-  object-fit: scale-down;
-}
+  .table tbody tr:hover {
+    background-color: #e0e0e0;
+  }
 
-.file-details-modal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  padding: 20px;
-  border: 1px solid #ccc;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  width: 80%; /* Adjust the width to fit the content */
-  max-width: 400px; /* Set a maximum width for the modal */
-  border-radius: 5px; /* Rounded corners for a cleaner look */
-}
+  @media (max-width: 768px) {
+    .table th,
+    .table td {
+      font-size: 14px;
+      padding: 8px;
+    }
+  }
 
-.file-details-modal .close {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  cursor: pointer;
-  font-size: 20px;
-}
+  .modal {
+    display: block;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%; /* Initial width */
+    max-width: 80%; /* Set a maximum width for the modal */
+    height: 50%; /* Initial height */
+    max-height: 80%; /* Set a maximum height for the modal */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    border-radius: 5px; /* Rounded corners for a cleaner look */
+    resize: both; /* Allow resizing */
+    overflow: auto; /* Enable overflow for content */
+  }
+
+  .modal-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    background-color: #e0e0e0;
+    cursor: nwse-resize;
+  }
+
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .pdf-viewer {
+    width: 100%;
+    height: 90%; /* Adjusted height for PDF viewer */
+    min-height: 400px; /* Minimum height for the PDF viewer */
+    object-fit: scale-down;
+  }
+
+  .image-viewer {
+    width: 100%;
+    height: 100%; /* Adjusted height for SVG viewer */
+    min-height: 200px; /* Minimum height for the SVG viewer */
+    object-fit: scale-down;
+  }
+
+  .file-details-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    width: 50%; /* Adjust the width to fit the content */
+    max-width: 80%; /* Set a maximum width for the modal */
+    height: auto; /* Adjust height to fit content */
+    max-height: 50%; /* Set a maximum height for the modal */
+    border-radius: 5px; /* Rounded corners for a cleaner look */
+    resize: both; /* Allow resizing */
+    overflow: auto; /* Enable overflow for content */
+  }
+
+  .file-details-modal .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
+    font-size: 20px;
+  }
 </style>
-
