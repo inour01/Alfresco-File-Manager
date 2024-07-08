@@ -17,17 +17,22 @@
             <td>{{ child.createdByUser.displayName }}</td>
             <td>{{ getDaysSinceModified(child.modifiedAt) }} days ago</td>
             <td>
+              <!-- Common buttons for all file types -->
               <button @click="openFileViewer(child)">
                 <font-awesome-icon icon="eye" /> View
               </button>
-              <button @click="showFileDetails(child)">Details</button>
               <button @click="confirmDelete(child)">Delete</button>
               <button @click="downloadFile(child)">
                 <font-awesome-icon icon="download" /> Download
               </button>
-              <button @click="extractAndUploadSVG(child)">
-                <font-awesome-icon icon="upload" /> Extract
-              </button>
+
+              <!-- Additional buttons only for PDF files -->
+              <template v-if="isPdfFile(child)">
+                <button @click="showFileDetails(child)">Details</button>
+                <button @click="extractAndUploadSVG(child)">
+                  <font-awesome-icon icon="upload" /> Extract
+                </button>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -57,12 +62,13 @@
         <h3>File Details</h3>
         <p><strong>File Name:</strong> {{ selectedFileDetails.fileName }}</p>
         <p><strong>File Node Ref:</strong> {{ selectedFileDetails.fileNodeRef }}</p>
-        <p><strong>Plan:</strong> {{ selectedFileDetails.newPlan }}</p> <!-- Display newPlan -->
+        <p><strong>Plan:</strong> {{ selectedFileDetails.newPlan }}</p>
         <button @click="closeFileDetails">Close</button>
       </div>
     </div>
   </div>
 </template>
+
 <script>
 import authService from '../services/authService';
 import axios from 'axios';
@@ -83,12 +89,11 @@ export default {
       children: [],
       selectedFile: null,
       selectedFileUrl: '',
-      selectedFileDetails: null, // Store file details retrieved from API
+      selectedFileDetails: null,
       showFileViewer: false,
       showDetailsModal: false,
-      uploadStatus: null, // Add this to track upload status
-      uploadedFiles: [], // Add this to track uploaded files
-      isPdf: true // Add this to differentiate between PDF and SVG
+      isPdf: true,
+      isSvg: false
     };
   },
   methods: {
@@ -121,40 +126,40 @@ export default {
       }
     },
     async openFileViewer(child) {
-  try {
-    const ticket = await this.authenticate();
-    const base64Ticket = btoa(ticket);
-    const url = `http://localhost/alfresco/api/-default-/public/alfresco/versions/1/nodes/${child.id}/content`;
-    const response = await axios.get(url, {
-      responseType: 'blob',
-      headers: {
-        'Authorization': `Basic ${base64Ticket}`,
-        'Accept': 'application/json'
+      try {
+        const ticket = await this.authenticate();
+        const base64Ticket = btoa(ticket);
+        const url = `http://localhost/alfresco/api/-default-/public/alfresco/versions/1/nodes/${child.id}/content`;
+        const response = await axios.get(url, {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Basic ${base64Ticket}`,
+            'Accept': 'application/json'
+          }
+        });
+        const contentType = response.headers['content-type'];
+        console.log('Content Type:', contentType);
+
+        const blob = new Blob([response.data], { type: contentType });
+        const urlObject = URL.createObjectURL(blob);
+        this.selectedFileUrl = urlObject;
+        this.selectedFile = child;
+
+        if (contentType.includes('application/pdf')) {
+          this.isPdf = true;
+          this.isSvg = false;
+        } else if (contentType.includes('image/svg+xml')) {
+          this.isPdf = false;
+          this.isSvg = true;
+        } else {
+          this.isPdf = false;
+          this.isSvg = false;
+        }
+        this.showFileViewer = true;
+      } catch (error) {
+        console.error('Error viewing file:', error);
       }
-    });
-    const contentType = response.headers['content-type'];
-    console.log('Content Type:', contentType); // Check the content type received
-
-    const blob = new Blob([response.data], { type: contentType });
-    const urlObject = URL.createObjectURL(blob);
-    this.selectedFileUrl = urlObject;
-    this.selectedFile = child;
-
-    if (contentType.includes('application/pdf')) {
-      this.isPdf = true;
-      this.isSvg = false;
-    } else if (contentType.includes('image/svg+xml')) {
-      this.isPdf = false;
-      this.isSvg = true;
-    } else {
-      this.isPdf = false;
-      this.isSvg = false;
-    }
-    this.showFileViewer = true; // Show file viewer modal
-  } catch (error) {
-    console.error('Error viewing file:', error);
-  }
-},
+    },
     async showFileDetails(child) {
       try {
         const ticket = "YWRtaW46YWRtaW4=";
@@ -166,10 +171,9 @@ export default {
           }
         });
 
-        // Set the selectedFileDetails with the response data
         this.selectedFileDetails = response.data;
         this.selectedFile = child;
-        this.showDetailsModal = true; // Show file details modal
+        this.showDetailsModal = true;
         console.log("selectedFileDetails", this.selectedFileDetails);
       } catch (error) {
         console.error('Error fetching file details:', error);
@@ -204,11 +208,11 @@ export default {
     closeFileViewer() {
       this.selectedFileUrl = '';
       this.selectedFile = null;
-      this.showFileViewer = false; // Hide file viewer modal
+      this.showFileViewer = false;
     },
     closeFileDetails() {
       this.selectedFile = null;
-      this.showDetailsModal = false; // Hide file details modal
+      this.showDetailsModal = false;
     },
     async confirmDelete(child) {
       const confirmed = window.confirm(`Are you sure you want to delete '${child.name}'?`);
@@ -223,7 +227,6 @@ export default {
               'Accept': 'application/json'
             }
           });
-          // After successful delete, fetch updated list of children
           this.fetchChildren();
         } catch (error) {
           console.error('Error deleting file:', error);
@@ -236,10 +239,6 @@ export default {
       const differenceInDays = Math.floor((currentDate - modifiedDate) / (1000 * 60 * 60 * 24));
       return differenceInDays;
     },
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
-    },
     async extractAndUploadSVG(child) {
       try {
         const response = await axios.get(`http://localhost/alfresco/s/sample/image-extractor?nodeId=${child.id}`, {
@@ -249,8 +248,7 @@ export default {
           }
         });
         if (response.data.message === 'Signatures extracted successfully') {
-          //alert('Signatures extracted successfully.');
-          this.fetchChildren(); // Refresh the list of children
+          this.fetchChildren();
         } else {
           alert('No SVG images found in the response.');
         }
@@ -258,6 +256,12 @@ export default {
         console.error('Error extracting and uploading SVG:', error);
         alert('An error occurred while extracting and uploading SVG.');
       }
+    },
+    isPdfFile(child) {
+      return child.name.toLowerCase().endsWith('.pdf');
+    },
+    isSvgFile(child) {
+      return child.name.toLowerCase().endsWith('.svg');
     }
   },
   created() {
