@@ -99,8 +99,8 @@ export default {
   methods: {
     async authenticate() {
       try {
-        const userId = 'ismael1';
-        const password = 'inour1029';
+        const userId = '';
+        const password = '';
         const ticket = await authService.authenticate(userId, password);
         console.log("Ticket", ticket);
         return ticket;
@@ -112,7 +112,7 @@ export default {
       try {
         const ticket = await this.authenticate();
         const base64Ticket = btoa(ticket);
-        const nodeId = '668041c6-70f3-472a-95bf-cb1d8230a414';
+        const nodeId = '';
         console.log(base64Ticket);
         const response = await axios.get(`http://localhost/alfresco/api/-default-/public/alfresco/versions/1/nodes/${nodeId}/children`, {
           headers: {
@@ -162,7 +162,7 @@ export default {
     },
     async showFileDetails(child) {
       try {
-        const ticket = "YWRtaW46YWRtaW4=";
+        const ticket = "";
         const url = `http://localhost/alfresco/s/sample/plan-management?id=${child.id}`;
         const response = await axios.get(url, {
           headers: {
